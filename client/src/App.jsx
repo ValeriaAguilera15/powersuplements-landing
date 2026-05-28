@@ -59,11 +59,11 @@ function App() {
           <div style={{ color: '#99ff00a4', fontSize: '22px', fontWeight: 'bold', letterSpacing: '1px' }}>POWER SUPLEMENTS</div>
         </div>
         <nav style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-          <a href="#inicio" style={{ color: '#fff', textDecoration: 'none', fontSize: '14px', textTransform: 'uppercase', fontWeight: '500' }}>Inicio</a>
-          <a href="#productos" style={{ color: '#fff', textDecoration: 'none', fontSize: '14px', textTransform: 'uppercase', fontWeight: '500' }}>Productos</a>
-          <a href="#nosotros" style={{ color: '#fff', textDecoration: 'none', fontSize: '14px', textTransform: 'uppercase', fontWeight: '500' }}>Nosotros</a>
-          <a href="#testimonios" style={{ color: '#fff', textDecoration: 'none', fontSize: '14px', textTransform: 'uppercase', fontWeight: '500' }}>Testimonios</a>
-          <a href="#contacto" style={{ color: '#99ff00bd', textDecoration: 'none', fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase' }}>Asesoría</a>
+          <a href="#inicio" className="nav-link" style={{ color: '#fff', textDecoration: 'none', fontSize: '14px', textTransform: 'uppercase', fontWeight: '500' }}>Inicio</a>
+          <a href="#productos" className="nav-link" style={{ color: '#fff', textDecoration: 'none', fontSize: '14px', textTransform: 'uppercase', fontWeight: '500' }}>Productos</a>
+          <a href="#nosotros" className="nav-link" style={{ color: '#fff', textDecoration: 'none', fontSize: '14px', textTransform: 'uppercase', fontWeight: '500' }}>Nosotros</a>
+          <a href="#testimonios" className="nav-link" style={{ color: '#fff', textDecoration: 'none', fontSize: '14px', textTransform: 'uppercase', fontWeight: '500' }}>Testimonios</a>
+          <a href="#contacto" className="nav-link" style={{ color: '#99ff00bd', textDecoration: 'none', fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase' }}>Asesoría</a>
         </nav>
       </header>
 
@@ -87,6 +87,7 @@ function App() {
           href="https://powersupplements.my.canva.site/" 
           target="_blank" 
           rel="noopener noreferrer"
+          className="btn-neon-hover"
           style={{ 
             background: '#99ff0098', color: '#000', padding: '15px 35px', 
             borderRadius: '6px', fontWeight: 'bold', textDecoration: 'none', display: 'inline-block', letterSpacing: '0.5px'
@@ -141,7 +142,7 @@ function App() {
               <img src={argininaImg} alt="L-Arginina" style={productImgStyle} />
             </div>
             <h3 style={productTitleStyle}>L-Arginina</h3>
-            <p style={productDescStyle}>100% Pura. Mejora la vasodilatación, quema de grasa y la óptima recuperación de tejidos.</p>
+            <p style={productDescStyle}>100% Pura. Mejora la vasodilatación, quema de grasa y la óptima recuperación de tissues.</p>
             <div style={badgeStyle}>250g</div>
           </div>
         </div>
@@ -251,13 +252,13 @@ function App() {
 
             <textarea name="mensaje" placeholder="¿Tienes alguna duda específica sobre alergias, dosis o combinación de suplementos? (Opcional)" value={formData.mensaje} onChange={handleChange} rows="3" style={inputStyle}></textarea>
             
-            <button type="submit" style={{ 
+            <button type="submit" className="btn-neon-hover" style={{ 
               background: '#99ff0098', color: '#000', padding: '14px', borderRadius: '6px', 
               fontWeight: 'bold', border: 'none', cursor: 'pointer', fontSize: '16px', letterSpacing: '0.5px', marginTop: '10px'
             }}>SOLICITAR MI PLAN DE SUPLEMENTACIÓN</button>
             
             {status === 'enviando' && <p style={{ color: '#a1a1aa', textAlign: 'center', margin: 0 }}>Enviando perfil deportivo...</p>}
-            {status === 'exito' && <p style={{ color: '#99ff0098', textAlign: 'center', margin: 0 }}>¡Perfil guardado! Un experto revisará tus datos.</p>}
+            {status === 'exito' && <p style={{ color: '#99ff0098', textAlign: 'center', margin: 0 }}>¡Perfil guardado! Un expert revisará tus datos.</p>}
             {status === 'error' && <p style={{ color: '#f87171', textAlign: 'center', margin: 0 }}>Error al conectar con el servidor.</p>}
           </form>
         </div>
