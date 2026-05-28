@@ -1,0 +1,23 @@
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+a, button, input, select, textarea {
+  transition: all 0.25s ease-in-out;
+}
+
+.btn-neon-hover:hover {
+  background-color: #99ff00bd !important;
+  box-shadow: 0 0 15px rgba(153, 255, 0, 0.4);
+  transform: scale(1.02);
+}
+
+.nav-link:hover {
+  color: #99ff00bd !important;
+}
