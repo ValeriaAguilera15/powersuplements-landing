@@ -8,9 +8,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// ==========================================
-// CONFIGURACIÓN DE CORS AVANZADA
-// ==========================================
+// Configuración de CORS
 app.use(cors({
   origin: '*', 
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -20,18 +18,18 @@ app.use(cors({
 app.use(express.json());
 
 // ==========================================
-// CONEXIÓN A MONGODB ATLAS (CON DB FORZADA)
+// CONEXIÓN A MONGODB ATLAS (CORREGIDA)
 // ==========================================
+// Se utiliza dbName: 'powersupplements' para coincidir con tu Atlas
 mongoose.connect(process.env.MONGO_URI || process.env.MONGODB_URI, {
-  dbName: 'powersuplements' 
+  dbName: 'powersupplements' 
 })
-  .then(() => console.log('¡Conectado con éxito a la base de datos powersuplements en Atlas!'))
+  .then(() => console.log('¡Conectado con éxito a la base de datos powersupplements en Atlas!'))
   .catch((err) => console.error('Error crítico al conectar a MongoDB:', err));
 
 // ==========================================
-// DEFINICIÓN DE ESQUEMAS Y MODELOS
+// MODELOS
 // ==========================================
-
 const productoSchema = new mongoose.Schema({
   id: mongoose.Schema.Types.Mixed, 
   nombre: String,
@@ -59,67 +57,38 @@ const Contacto = mongoose.models.Contacto || mongoose.model('Contacto', contacto
 // RUTAS DE LA API
 // ==========================================
 
-// GET: Obtener productos formateados para React
 app.get('/api/productos', async (req, res) => {
   try {
     const productosDB = await Producto.find({}).lean(); 
+    
+    // Mapeo seguro para el frontend
+    const productosFormateados = productosDB.map(p => ({
+      id: (p.id || p._id || "").toString(),
+      nombre: p.nombre || "",
+      descripcion: p.descripcion || "",
+      precio: p.precio || 0,
+      imagen_url: p.imagen_url || p.imagen || "", 
+      stock: p.stock || 0
+    }));
 
-    const productosFormateados = productosDB.map(p => {
-      let finalId = "";
-      if (p.id !== undefined && p.id !== null) {
-        finalId = p.id.toString();
-      } else if (p._id) {
-        finalId = p._id.toString();
-      }
-
-      return {
-        id: finalId, 
-        nombre: p.nombre || "",
-        descripcion: p.descripcion || "",
-        precio: p.precio || 0,
-        imagen_url: p.imagen_url || "", 
-        stock: p.stock || 0
-      };
-    });
-
-    console.log("Productos enviados con éxito al frontend:", productosFormateados);
+    console.log("Productos enviados al frontend:", productosFormateados);
     res.json(productosFormateados);
   } catch (error) {
-    console.error("Error crítico en GET /api/productos:", error);
-    res.status(500).json({ error: 'Error interno en el servidor al formatear los productos' });
+    console.error("Error en GET /api/productos:", error);
+    res.status(500).json({ error: 'Error interno en el servidor' });
   }
 });
 
-// POST: Guardar registros del formulario de asesoría
 app.post('/api/contacto', async (req, res) => {
   try {
-    const { nombre, email, telefono, disciplina, objetivo, mensaje } = req.body;
-
-    if (!nombre || !email || !disciplina) {
-      return res.status(400).json({ error: 'Faltan campos obligatorios' });
-    }
-
-    const nuevoContacto = new Contacto({
-      nombre,
-      email,
-      telefono,
-      disciplina,
-      objetivo: objetivo || "No especificado", 
-      mensaje: mensaje || ""
-    });
-
+    const nuevoContacto = new Contacto(req.body);
     await nuevoContacto.save();
-    res.status(201).json({ mensaje: '¡Perfil de asesoría guardado con éxito!' });
+    res.status(201).json({ mensaje: '¡Éxito!' });
   } catch (error) {
-    console.error("Error en POST /api/contacto:", error);
-    res.status(500).json({ error: 'Error interno al procesar el formulario' });
+    res.status(500).json({ error: 'Error al procesar el formulario' });
   }
 });
 
-app.get('/', (req, res) => {
-  res.send('Servidor de Power Suplements corriendo perfectamente.');
-});
+app.get('/', (req, res) => res.send('Servidor activo.'));
 
-app.listen(PORT, () => {
-  console.log(`Servidor activo en el puerto: ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Servidor en puerto: ${PORT}`));

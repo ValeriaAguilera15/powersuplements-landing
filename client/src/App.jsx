@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { supabase } from './supabaseClient';
 
 function App() {
-  // Estado para almacenar los productos traídos de Supabase
+  // Estado para almacenar los productos traídos de MongoDB (vía Render)
   const [listaProductos, setListaProductos] = useState([]);
   
   // Estado para el carrito de compras (clave: id_producto, valor: cantidad)
   const [carrito, setCarrito] = useState({});
+
+  // Estado para controlar la carga del catálogo
+  const [cargando, setCargando] = useState(true);
 
   // Estado para el formulario de asesoría profesional
   const [formData, setFormData] = useState({
@@ -19,57 +21,65 @@ function App() {
   });
   const [status, setStatus] = useState('');
 
-  // 1. CARGAR PRODUCTOS DESDE SUPABASE AL INICIAR
+  // 1. CARGAR PRODUCTOS DESDE EL BACKEND EN RENDER (MONGODB) AL INICIAR
   useEffect(() => {
     const obtenerProductos = async () => {
-      console.log("Intentando conectar a Supabase...");
+      console.log("Intentando conectar al Backend en Render...");
       try {
-        const { data, error } = await supabase
-          .from('productos')
-          .select('*')
-          .order('id', { ascending: true });
-
-        if (error) {
-          console.error("Error devuelto por Supabase:", error);
-          throw error;
+        setCargando(true);
+        const response = await fetch('https://powersuplements-landing.onrender.com/api/productos');
+        if (!response.ok) {
+          throw new Error('Error al traer los productos del servidor');
         }
 
-        console.log("Datos recibidos con éxito de Supabase:", data);
+        const data = await response.json();
+        console.log("Datos recibidos con éxito de MongoDB:", data);
 
-        if (data) {
+        if (data && data.length > 0) {
           setListaProductos(data);
-          // Inicializar dinámicamente las cantidades del carrito en 0 usando los IDs de la BD
+          
+          // Inicializar dinámicamente las cantidades del carrito usando el ID unificado del backend
           const carritoInicial = {};
           data.forEach(p => {
-            carritoInicial[p.id] = 0;
+            const productoId = p.id || p._id; // Respaldo seguro por si acaso
+            if (productoId) {
+              carritoInicial[productoId] = 0;
+            }
           });
           setCarrito(carritoInicial);
         }
       } catch (error) {
         console.error('Error crítico al cargar productos:', error.message);
+      } finally {
+        setCargando(false); // Rompe el letrero de carga pase lo que pase
       }
     };
 
     obtenerProductos();
   }, []);
 
-  // 2. LÓGICA DEL CARRITO (Incrementar / Decrementar)
+  // 2. LÓGICA DEL CARRITO (Incrementar / Decrementar usando el ID seguro)
   const incrementarProducto = (id) => {
+    if (!id) return;
     setCarrito(prev => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
   };
 
   const decrementarProducto = (id) => {
+    if (!id) return;
     setCarrito(prev => ({ ...prev, [id]: prev[id] > 0 ? prev[id] - 1 : 0 }));
   };
 
   // Cálculos dinámicos del total de unidades y monto acumulado
   const totalItems = Object.values(carrito).reduce((a, b) => a + b, 0);
-  const montoTotal = listaProductos.reduce((total, p) => total + ((carrito[p.id] || 0) * p.precio), 0);
+  const montoTotal = listaProductos.reduce((total, p) => {
+    const productoId = p.id || p._id;
+    return total + ((carrito[productoId] || 0) * p.precio);
+  }, 0);
 
   // 3. ENVÍO DEL PEDIDO ACUMULADO A WHATSAPP
   const enviarPedidoWhatsApp = () => {
     const telefonoWhatsApp = "584146045659";
-    const productosPedidos = listaProductos.filter(p => carrito[p.id] > 0);
+    const productosPedidos = listaProductos.filter(p => carrito[p.id || p._id] > 0);
     
     if (productosPedidos.length === 0) {
       alert("Por favor, agrega al menos un producto al carrito antes de comprar.");
@@ -78,7 +88,8 @@ function App() {
 
     let textoProductos = "";
     productosPedidos.forEach(p => {
-      textoProductos += `• ${carrito[p.id]}x ${p.nombre} - $${p.precio * carrito[p.id]}\n`;
+      const productoId = p.id || p._id;
+      textoProductos += `• ${carrito[productoId]}x ${p.nombre} - $${p.precio * carrito[productoId]}\n`;
     });
 
     const mensajeWA = encodeURIComponent(
@@ -175,17 +186,23 @@ function App() {
         </a>
       </section>
 
-      {/* SECCIÓN PRODUCTOS DINÁMICOS DESDE SUPABASE */}
+      {/* SECCIÓN PRODUCTOS DINÁMICOS */}
       <section id="productos" style={{ padding: '80px 5%', maxWidth: '1200px', margin: '0 auto' }}>
         <h2 style={{ textAlign: 'center', fontSize: 'clamp(28px, 4vw, 36px)', marginBottom: '50px', fontWeight: '800', letterSpacing: '-0.5px' }}>
           PRODUCTOS <span style={{ color: '#99ff0083' }}>DESTACADOS</span>
         </h2>
         
-        {listaProductos.length === 0 ? (
+        {cargando ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', border: '1px dashed #222', borderRadius: '12px', background: '#050505' }}>
             <div style={{ color: '#99ff00', fontSize: '24px', marginBottom: '10px' }}>🛒</div>
             <p style={{ color: '#a1a1aa', margin: 0, fontSize: '16px', fontWeight: '500' }}>
-              Cargando catálogo oficial desde Supabase...
+              Cargando catálogo oficial desde MongoDB Atlas...
+            </p>
+          </div>
+        ) : listaProductos.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px', border: '1px dashed #333', borderRadius: '12px', background: '#050505' }}>
+            <p style={{ color: '#71717a', margin: 0, fontSize: '16px' }}>
+              No se encontraron productos disponibles en el catálogo en este momento.
             </p>
           </div>
         ) : (
@@ -193,38 +210,44 @@ function App() {
             display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
             gap: '30px', marginBottom: '40px'
           }}>
-            {listaProductos.map((p) => (
-              <div key={p.id} style={cardStyle}>
-                <div style={imgContainerStyle}>
-                  <img src={`/${p.imagen_url}`} alt={p.nombre} style={productImgStyle} />
+            {listaProductos.map((p) => {
+              const currentId = p.id || p._id;
+              // Sincronización inteligente de la propiedad de imagen
+              const urlImagen = p.imagen_url || p.imagen || "logo.jpg";
+
+              return (
+                <div key={currentId} style={cardStyle}>
+                  <div style={imgContainerStyle}>
+                    <img src={`/${urlImagen}`} alt={p.nombre} style={productImgStyle} />
+                  </div>
+                  <h3 style={productTitleStyle}>{p.nombre}</h3>
+                  <p style={productDescStyle}>{p.descripcion}</p>
+                  <div style={{ color: '#99ff0098', fontWeight: 'bold', fontSize: '18px', marginBottom: '15px' }}>
+                    ${p.precio}
+                  </div>
+                  {p.stock !== undefined && <div style={badgeStyle}>Stock: {p.stock}</div>}
+                  
+                  {/* SELECTOR INTERACTIVO DE CANTIDADES */}
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    gap: '15px', 
+                    background: '#0a0a0a', 
+                    padding: '8px', 
+                    borderRadius: '6px', 
+                    border: '1px solid #222',
+                    marginTop: 'auto' 
+                  }}>
+                    <button type="button" onClick={() => decrementarProducto(currentId)} style={btnContadorStyle}>-</button>
+                    <span style={{ fontSize: '16px', fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>
+                      {carrito[currentId] || 0}
+                    </span>
+                    <button type="button" onClick={() => incrementarProducto(currentId)} style={btnContadorStyle}>+</button>
+                  </div>
                 </div>
-                <h3 style={productTitleStyle}>{p.nombre}</h3>
-                <p style={productDescStyle}>{p.descripcion}</p>
-                <div style={{ color: '#99ff0098', fontWeight: 'bold', fontSize: '18px', marginBottom: '15px' }}>
-                  ${p.precio}
-                </div>
-                {p.stock && <div style={badgeStyle}>Stock: {p.stock}</div>}
-                
-                {/* SELECTOR INTERACTIVO DE CANTIDADES */}
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  gap: '15px', 
-                  background: '#0a0a0a', 
-                  padding: '8px', 
-                  borderRadius: '6px', 
-                  border: '1px solid #222',
-                  marginTop: 'auto' 
-                }}>
-                  <button type="button" onClick={() => decrementarProducto(p.id)} style={btnContadorStyle}>-</button>
-                  <span style={{ fontSize: '16px', fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>
-                    {carrito[p.id] || 0}
-                  </span>
-                  <button type="button" onClick={() => incrementarProducto(p.id)} style={btnContadorStyle}>+</button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -303,7 +326,6 @@ function App() {
         </h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '30px' }}>
           
-          {/* TESTIMONIO 1 */}
           <div style={testimonialCardStyle}>
             <p style={{ fontStyle: 'italic', color: '#a1a1aa', fontSize: '15px', lineHeight: '1.6', margin: '0 0 20px' }}>
               "La creatina monohidratada de Power Suplements se ha vuelto indispensable en mi preparación de CrossFit. He roto todas mis marcas de fuerza explosiva."
@@ -314,7 +336,6 @@ function App() {
             </div>
           </div>
 
-          {/* TESTIMONIO 2 */}
           <div style={testimonialCardStyle}>
             <p style={{ fontStyle: 'italic', color: '#a1a1aa', fontSize: '15px', lineHeight: '1.6', margin: '0 0 20px' }}>
               "La beta-alanina es brutal para retrasar la fatiga en los WODs más largos. El servicio de entrega rápida el mismo día me salvó la semana pasada."
@@ -325,7 +346,6 @@ function App() {
             </div>
           </div>
 
-          {/* TESTIMONIO 3 */}
           <div style={testimonialCardStyle}>
             <p style={{ fontStyle: 'italic', color: '#a1a1aa', fontSize: '15px', lineHeight: '1.6', margin: '0 0 20px' }}>
               "Excelente asesoría y suplementación 100% transparente. Como corredor de fondo, la pureza de lo que consumo es clave para mi recuperación."
