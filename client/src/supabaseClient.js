@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://ledstnkvvyikwzrpvwqp.supabase.co';
-const supabaseAnonKey = 'sb_publishable_2iA9nTQo83crjgEh9DDnDQ_19hk3dDj';
+// Leemos las credenciales de forma segura desde el archivo .env
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// Creamos e exportamos el cliente de Supabase optimizado para producción
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
