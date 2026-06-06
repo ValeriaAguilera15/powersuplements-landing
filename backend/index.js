@@ -8,21 +8,30 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// ==========================================
+// CONFIGURACIÓN DE CORS AVANZADA
+// ==========================================
+app.use(cors({
+  origin: '*', 
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 
 // ==========================================
-// CONEXIÓN A MONGODB ATLAS
+// CONEXIÓN A MONGODB ATLAS (CON DB FORZADA)
 // ==========================================
-mongoose.connect(process.env.MONGO_URI || process.env.MONGODB_URI)
-  .then(() => console.log('¡Conectado con éxito a MongoDB Atlas!'))
+mongoose.connect(process.env.MONGO_URI || process.env.MONGODB_URI, {
+  dbName: 'powersuplements' 
+})
+  .then(() => console.log('¡Conectado con éxito a la base de datos powersuplements en Atlas!'))
   .catch((err) => console.error('Error crítico al conectar a MongoDB:', err));
 
 // ==========================================
 // DEFINICIÓN DE ESQUEMAS Y MODELOS
 // ==========================================
 
-// Esquema de Productos (Especificamos que 'id' puede ser un número o string)
 const productoSchema = new mongoose.Schema({
   id: mongoose.Schema.Types.Mixed, 
   nombre: String,
@@ -34,7 +43,6 @@ const productoSchema = new mongoose.Schema({
 
 const Producto = mongoose.models.Producto || mongoose.model('Producto', productoSchema);
 
-// Esquema de Contactos 
 const contactoSchema = new mongoose.Schema({
   nombre: { type: String, required: true },
   email: { type: String, required: true },
@@ -51,15 +59,13 @@ const Contacto = mongoose.models.Contacto || mongoose.model('Contacto', contacto
 // RUTAS DE LA API
 // ==========================================
 
-// 1. GET: Obtener productos formateados para React (Segura contra Error 500)
+// GET: Obtener productos formateados para React
 app.get('/api/productos', async (req, res) => {
   try {
     const productosDB = await Producto.find({}).lean(); 
 
-    // Mapeamos de forma ultra segura verificando la existencia de las propiedades
     const productosFormateados = productosDB.map(p => {
       let finalId = "";
-      
       if (p.id !== undefined && p.id !== null) {
         finalId = p.id.toString();
       } else if (p._id) {
@@ -84,7 +90,7 @@ app.get('/api/productos', async (req, res) => {
   }
 });
 
-// 2. POST: Guardar registros del formulario de asesoría
+// POST: Guardar registros del formulario de asesoría
 app.post('/api/contacto', async (req, res) => {
   try {
     const { nombre, email, telefono, disciplina, objetivo, mensaje } = req.body;
