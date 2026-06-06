@@ -3,13 +3,11 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
-// Configuración de variables de entorno
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middlewares
 app.use(cors());
 app.use(express.json());
 
@@ -24,9 +22,9 @@ mongoose.connect(process.env.MONGO_URI || process.env.MONGODB_URI)
 // DEFINICIÓN DE ESQUEMAS Y MODELOS
 // ==========================================
 
-// Esquema de Productos (Incluye tu 'id' numérico manual)
+// Esquema de Productos (Especificamos que 'id' puede ser un número o string)
 const productoSchema = new mongoose.Schema({
-  id: Number, 
+  id: mongoose.Schema.Types.Mixed, 
   nombre: String,
   descripcion: String,
   precio: Number,
@@ -36,7 +34,7 @@ const productoSchema = new mongoose.Schema({
 
 const Producto = mongoose.models.Producto || mongoose.model('Producto', productoSchema);
 
-// Esquema de Contactos (Campos flexibles para evitar Error 400)
+// Esquema de Contactos 
 const contactoSchema = new mongoose.Schema({
   nombre: { type: String, required: true },
   email: { type: String, required: true },
@@ -53,26 +51,36 @@ const Contacto = mongoose.models.Contacto || mongoose.model('Contacto', contacto
 // RUTAS DE LA API
 // ==========================================
 
-// 1. GET: Obtener productos formateados para React
+// 1. GET: Obtener productos formateados para React (Segura contra Error 500)
 app.get('/api/productos', async (req, res) => {
   try {
     const productosDB = await Producto.find({}).lean(); 
 
-    // Mapeamos para garantizar que React reciba la propiedad 'id' como un String estable
-    const productosFormateados = productosDB.map(p => ({
-      id: p.id ? p.id.toString() : p._id.toString(), 
-      nombre: p.nombre,
-      descripcion: p.descripcion,
-      precio: p.precio,
-      imagen_url: p.imagen_url, 
-      stock: p.stock
-    }));
+    // Mapeamos de forma ultra segura verificando la existencia de las propiedades
+    const productosFormateados = productosDB.map(p => {
+      let finalId = "";
+      
+      if (p.id !== undefined && p.id !== null) {
+        finalId = p.id.toString();
+      } else if (p._id) {
+        finalId = p._id.toString();
+      }
+
+      return {
+        id: finalId, 
+        nombre: p.nombre || "",
+        descripcion: p.descripcion || "",
+        precio: p.precio || 0,
+        imagen_url: p.imagen_url || "", 
+        stock: p.stock || 0
+      };
+    });
 
     console.log("Productos enviados con éxito al frontend:", productosFormateados);
     res.json(productosFormateados);
   } catch (error) {
-    console.error("Error en GET /api/productos:", error);
-    res.status(500).json({ error: 'Error al obtener los productos desde MongoDB' });
+    console.error("Error crítico en GET /api/productos:", error);
+    res.status(500).json({ error: 'Error interno en el servidor al formatear los productos' });
   }
 });
 
@@ -82,7 +90,7 @@ app.post('/api/contacto', async (req, res) => {
     const { nombre, email, telefono, disciplina, objetivo, mensaje } = req.body;
 
     if (!nombre || !email || !disciplina) {
-      return res.status(400).json({ error: 'Faltan campos obligatorios (nombre, email o disciplina)' });
+      return res.status(400).json({ error: 'Faltan campos obligatorios' });
     }
 
     const nuevoContacto = new Contacto({
@@ -102,12 +110,10 @@ app.post('/api/contacto', async (req, res) => {
   }
 });
 
-// Ruta base de prueba
 app.get('/', (req, res) => {
   res.send('Servidor de Power Suplements corriendo perfectamente.');
 });
 
-// Inicialización del servidor
 app.listen(PORT, () => {
   console.log(`Servidor activo en el puerto: ${PORT}`);
 });
